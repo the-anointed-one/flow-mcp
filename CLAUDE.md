@@ -510,3 +510,11 @@ The preview tool could not read the project while it lived in ~/Desktop; check t
 - CAPTIONS WORKFLOW (the user's rule, 2026-10-18): transcribe first, show the words with likely mishearings fixed,
   get the user's OK, THEN make the video once. The playbook and the flow_captions description say so too.
 
+- AGENT PANEL OPEN ON LOAD (2026-10-27): Flow now opens a project with the agent session panel showing ("Hi <name>,
+  What would you like to create?", `Start new session`, `Close`). While it is open there is no `Agent` button at all
+  (only `Agent instructions`), so runGeneration timed out on `getByRole('button', { name: 'Agent', exact: true })`
+  before spending anything, every time; closing the panel by hand did not stick, since ensureProjectGrid reloads the
+  page and the panel comes back. runGeneration now calls closeAgentSession right after ensureProjectGrid. Verified
+  live via scripts/e2e.mjs on a scratch FLOW_MCP_HOME + port 8799: two Veo 3.1 Lite 9:16 clips, 10 credits each, done
+  and downloaded. Restarting the Claude app did NOT replace a Code session's own flow-mcp child (still the pre-build
+  process afterwards), so that session keeps the old code until the session itself restarts.
