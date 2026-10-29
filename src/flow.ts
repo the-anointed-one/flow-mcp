@@ -19,6 +19,12 @@ export interface FlowState {
 const IMAGE_TIMEOUT_MS = 3 * 60_000;
 const VIDEO_TIMEOUT_MS = 12 * 60_000;
 const FAILURE_TEXT = /failed|couldn.t|unable/i;
+// Flow's refusal when it suspects automation (seen 2026-10-28 on three free stills in a row): an error tile reading
+// "We noticed some unusual activity. Note that browser extensions that modify the page may cause issues." Pressing
+// Retry or queueing more is exactly the wrong answer, so the job stops and the queue stops with it.
+export const BLOCKED_TEXT = /unusual activity/i;
+export const BLOCKED_ERROR =
+  "Flow refused this generation: \"We noticed some unusual activity\" (nothing was charged). The rest of the queue was stopped. Let Flow rest for a while, make one generation by hand in the Flow window, and only queue again once that works.";
 
 const pause = (page: Page, ms: number) => page.waitForTimeout(ms);
 
@@ -196,11 +202,12 @@ export async function retryNewErrorTiles(
           const id = (eval(js) as (t: Element) => string | undefined)(tile);
           const name = tile.getAttribute("aria-label");
           if ((id && seen.has(id)) || (name && seen.has(name))) return "known";
-          if (tile.querySelector("flow-error-tile")) return "error";
+          if (tile.querySelector("flow-error-tile")) return /unusual activity/i.test((tile as HTMLElement).innerText) ? "blocked" : "error";
         }
         return "none";
       }, [ids, TILE_ID_JS] as [string[], string]);
       if (state === "known") reachedKnown = true;
+      else if (state === "blocked") throw new Error(BLOCKED_ERROR);
       else if (state === "error") {
         found = true;
         errors++;
@@ -241,6 +248,7 @@ export async function freshMedia(page: Page, before: string[], kind?: MediaKind)
       const idOf = eval(js) as (t: Element) => string | undefined;
       return [...document.querySelectorAll("flow-grid-tile-container")].map((t) => ({
         id: idOf(t),
+        failed: !!t.querySelector("flow-error-tile"),
         kind: t.querySelector("flow-video-tile") ? "video" : t.querySelector("flow-image-tile") ? "image" : "other",
         label: t.getAttribute("aria-label") ?? "",
         // For the first seconds after Start generation, before any "NN%" shows, a new video tile is titled with the
@@ -255,7 +263,7 @@ export async function freshMedia(page: Page, before: string[], kind?: MediaKind)
     },
     TILE_ID_JS,
   );
-  const ours = tiles.filter((t) => t.id && !before.includes(t.id) && !t.label.startsWith("fm-") && !t.busy && (!kind || t.kind === kind));
+  const ours = tiles.filter((t) => t.id && !before.includes(t.id) && !t.label.startsWith("fm-") && !t.busy && !t.failed && (!kind || t.kind === kind));
   return [...new Set(ours.map((t) => t.id!))];
 }
 
@@ -284,6 +292,10 @@ async function waitForNewMedia(page: Page, before: string[], count: number, time
     if (job) job.progress = progress.join(", ") || undefined;
     const errors = progress.length ? 0 : await newErrorTiles(page, before);
     if (!errors) continue;
+    // Only the newest failure counts: old refusals stay in the grid forever.
+    if (BLOCKED_TEXT.test((await page.locator("flow-error-tile").first().innerText().catch(() => "")) ?? "")) {
+      throw new Error(BLOCKED_ERROR);
+    }
     failures += errors;
     if (retriesLeft > 0) {
       retriesLeft--;

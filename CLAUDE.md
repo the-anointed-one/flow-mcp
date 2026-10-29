@@ -518,3 +518,12 @@ The preview tool could not read the project while it lived in ~/Desktop; check t
   live via scripts/e2e.mjs on a scratch FLOW_MCP_HOME + port 8799: two Veo 3.1 Lite 9:16 clips, 10 credits each, done
   and downloaded. Restarting the Claude app did NOT replace a Code session's own flow-mcp child (still the pre-build
   process afterwards), so that session keeps the old code until the session itself restarts.
+- "UNUSUAL ACTIVITY" REFUSAL (2026-10-28, three free 9:16 stills in a row, account at 0 credits): each became a
+  `flow-error-tile` reading "We noticed some unusual activity. Note that browser extensions that modify the page may
+  cause issues... You have not been charged", with Retry / Reuse prompt / Delete, and - unlike the "Sorry, this image
+  failed" tile - TITLED WITH THE PROMPT and carrying an id, so freshMedia took it as the result and every job spent
+  ~10 min failing to download it. freshMedia now skips tiles holding flow-error-tile; waitForNewMedia and
+  retryNewErrorTiles throw BLOCKED_ERROR on this text (never press Retry on it), and the queue fails every remaining
+  queued job instead of walking into the same refusal. This is Flow's anti-automation check: back off, never work
+  around it; the user makes one generation by hand before anything is queued again. Checked against the live grid
+  (refused tiles detected); not yet seen firing inside a run.
