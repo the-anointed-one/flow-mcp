@@ -349,15 +349,19 @@ export function newestNanoBanana(names: string[]): number {
   return best;
 }
 
+// Flow renames its models now and then ("Veo 3.1 Lite" became "Veo 3.1 - Lite", 2026-10-30) and prefixes menu items
+// with icon ligatures ("volume_up"), so names are compared on letters, digits and dots only.
+const modelKey = (s: string) => s.toLowerCase().replace(/[^a-z0-9.]/g, "");
+
 async function pickModel(page: Page, model: string): Promise<void> {
   const button = page.getByRole("button", { name: "Select model family" });
   const latest = model === LATEST_IMAGE_MODEL;
-  if (!latest && (await button.innerText()).toLowerCase().includes(model.toLowerCase())) return;
+  if (!latest && modelKey(await button.innerText()).includes(modelKey(model))) return;
   await button.click();
   const items = page.getByRole("menuitem");
   await items.first().waitFor({ state: "visible", timeout: 5000 });
   const names = (await items.allInnerTexts()).map((t) => t.replace(/\s+/g, " ").trim());
-  const index = latest ? newestNanoBanana(names) : names.findIndex((n) => n.toLowerCase().includes(model.toLowerCase()));
+  const index = latest ? newestNanoBanana(names) : names.findIndex((n) => modelKey(n).includes(modelKey(model)));
   const shown = (await button.innerText()).replace(/\s+/g, " ");
   if (index < 0 || (latest && shown.includes(names[index]))) {
     // Nothing to change (already the newest, or no numbered Nano Banana here at all): close the menu, pick nothing.

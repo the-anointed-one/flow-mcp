@@ -527,3 +527,10 @@ The preview tool could not read the project while it lived in ~/Desktop; check t
   queued job instead of walking into the same refusal. This is Flow's anti-automation check: back off, never work
   around it; the user makes one generation by hand before anything is queued again. Checked against the live grid
   (refused tiles detected); not yet seen firing inside a run.
+- MODEL NAMES DRIFT (2026-10-30): Flow's model menu now reads "Veo 3.1 - Lite" / "- Fast" / "- Quality", each item
+  prefixed with the icon ligature "volume_up", so model "Veo 3.1 Lite" failed with "not found" (nothing spent).
+  pickModel compares through modelKey() (lowercase, letters/digits/dots only). Verified: four Veo 3.1 Lite 9:16
+  first-frame clips, 10 credits each, all downloaded with audio.
+- SCRATCH HOME = SCRATCH CHROME PROFILE: PROFILE_DIR lives under FLOW_MCP_HOME, so an e2e run with a scratch home
+  while the real Flow Chrome is CLOSED launches a fresh, signed-out profile and reports "Not signed in". Start the
+  real Chrome first (import dist/chrome.js getFlowPage with FLOW_MCP_HOME unset), then run the test against it.
